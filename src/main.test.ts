@@ -2,8 +2,8 @@ import { test } from "node:test";
 import * as assert from "node:assert";
 
 import { z } from "zod";
-import { Window, Node, HTMLFormElement } from "happy-dom";
-import { convertZodToFormElements } from "./main.ts";
+import { Window, HTMLFormElement } from "happy-dom";
+import { convertSchemaToFormElements } from "./main.ts";
 import { createElement } from "./window.ts";
 import { unflatten } from "flat";
 
@@ -34,7 +34,7 @@ test("test", async () => {
       method: "POST",
       url: "https://node.deno.dev",
     },
-    convertZodToFormElements(S),
+    convertSchemaToFormElements(z.toJSONSchema(S)),
   ) as unknown as HTMLFormElement;
 
   console.log(form.outerHTML);
