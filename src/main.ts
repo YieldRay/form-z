@@ -3,23 +3,24 @@ import { window, createElement } from "./window.ts";
 
 type AtomSchema = z.ZodString | z.ZodNumber | z.ZodDate | z.ZodFile | z.ZodBoolean | z.ZodEnum | z.ZodObject;
 
-export function convertZodToFormElements(schema: z.ZodObject): Array<HTMLElement> {
+export function convertZodToFormElements(schema: z.ZodObject, parent?: string): Array<HTMLElement> {
   const fragment = window.document.createDocumentFragment();
 
-  for (const [name, _value] of Object.entries(schema.shape)) {
+  for (const [key, _value] of Object.entries(schema.shape)) {
     const value = _value as AtomSchema;
 
     if (value instanceof z.ZodObject) {
       const fieldset = createElement("fieldset", {}, [
         window.document.createTextNode("\n"),
-        createElement("legend", { textContent: name }),
-        ...convertZodToFormElements(value),
+        createElement("legend", { textContent: key }),
+        ...convertZodToFormElements(value, parent ? `${parent}.${key}` : key),
       ]);
       fragment.appendChild(fieldset);
     } else {
-      const label = createElement("label", { textContent: name });
+      const label = createElement("label", { textContent: key });
       fragment.appendChild(label);
 
+      const name = parent ? `${parent}.${key}` : key;
       const meta = value.meta();
       const uiWidget = meta?.uiWidget as string | undefined;
 
