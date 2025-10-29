@@ -1,9 +1,9 @@
+import { Ajv } from "ajv";
 import { z } from "zod";
 import { HTMLFormElement } from "happy-dom";
 import { convertSchemaToFormElements } from "./main.ts";
 import { createElement } from "./window.ts";
 import { unflatten } from "flat";
-import { fa } from "zod/locales";
 
 const S = z.object({
   url: z.url().default("https://example.net"),
@@ -62,8 +62,20 @@ export default {
     if (url.pathname === "/form") {
       const fd = await request.formData();
       const obj = unflatten(Object.fromEntries(fd.entries()));
-      const result = S.safeParse(obj);
-      return Response.json(result);
+      // const result = S.safeParse(obj);
+      // return Response.json(result);
+
+      const validate = new Ajv({
+        coerceTypes: true,
+        strictSchema: false,
+      }).compile(z.toJSONSchema(S, { target: "openapi-3.0" }));
+
+      const valid = validate(obj);
+      if (valid) {
+        return Response.json({ success: true, data: obj });
+      } else {
+        return Response.json({ success: false, errors: validate.errors });
+      }
     } else {
       const html = `<!DOCTYPE html>
 <html lang="en">

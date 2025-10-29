@@ -10,11 +10,14 @@ import { unflatten } from "flat";
 test("test", async () => {
   const S = z.object({
     url: z.url(),
-    method: z.enum(["GET", "POST"]).meta({
-      uiWidget: "select", // or "radio"
-    }),
+    method: z
+      .enum(["GET", "POST"])
+      .meta({
+        uiWidget: "select", // or "radio"
+      })
+      .default("POST"),
     user: z.object({
-      name: z.string(),
+      name: z.string().min(1).max(100),
       age: z.number().min(0).max(120).meta({
         uiWidget: "range", // or "number"
       }),
@@ -32,7 +35,7 @@ test("test", async () => {
     "form",
     {
       method: "POST",
-      url: "https://node.deno.dev",
+      target: "https://node.deno.dev",
     },
     convertSchemaToFormElements(z.toJSONSchema(S)),
   ) as unknown as HTMLFormElement;
@@ -43,18 +46,13 @@ test("test", async () => {
   const { document, FormData } = new Window();
   document.body.appendChild(form);
 
-  await new Promise((r) => {
-    form.addEventListener("submit", r);
-    form.requestSubmit();
-  });
-
   const fd = new FormData(form);
   const obj = unflatten(Object.fromEntries(fd.entries()));
 
   console.log(JSON.stringify(obj, null, 2));
   assert.deepStrictEqual(obj, {
     url: "",
-    method: "GET",
+    method: "POST",
     user: {
       name: "",
       age: "",

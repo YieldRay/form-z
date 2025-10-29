@@ -1,20 +1,31 @@
 import { Window } from "happy-dom";
+import type { HTMLElementTagNameMapToAttributes } from "./attrs.ts";
 
 export const window = (globalThis.window ??
   new Window()) as unknown as globalThis.Window;
 
-export function createElement<K extends keyof HTMLElementTagNameMap>(
+export function createElement<
+  K extends keyof HTMLElementTagNameMap &
+    keyof HTMLElementTagNameMapToAttributes,
+>(
   tagName: K,
-  props?: Partial<HTMLElementTagNameMap[K]>,
-  children?: Iterable<Node | string>,
+  props?: Partial<
+    Record<HTMLElementTagNameMapToAttributes[K], string | number | boolean>
+  >,
+  children?: Iterable<Node | string | null | undefined | false>,
 ): HTMLElementTagNameMap[K] {
   const element = window.document.createElement(tagName);
-  Object.assign(element, props);
+
+  for (const [key, value] of Object.entries(props ?? {})) {
+    if (value != undefined && value !== false)
+      element.setAttribute(key, value as string);
+  }
+
   if (children) {
     for (const child of children) {
       if (typeof child === "string") {
         element.appendChild(window.document.createTextNode(child));
-      } else {
+      } else if (child) {
         element.appendChild(child);
       }
     }

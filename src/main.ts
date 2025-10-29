@@ -18,7 +18,9 @@ export function convertSchemaToFormElements(
         `Unsupported schema type for field "${key}", missing type`,
       );
 
-    const { uiWidget, uiMultiple, default: defaultValue } = value;
+    const { uiWidget, uiMultiple, default: defaultValue, description } = value;
+    const defaultValueString =
+      defaultValue == undefined ? undefined : String(defaultValue);
     const required = requiredKeys.has(key);
     const name = parent ? `${parent}.${key}` : key;
 
@@ -31,16 +33,23 @@ export function convertSchemaToFormElements(
               if (uiWidget === "select") {
                 fragment.appendChild(
                   createElement("label", {}, [
-                    createElement("span", { textContent: key }),
+                    createElement("span", {}, [key]),
                     createElement(
                       "select",
-                      { name, multiple: true, required },
+                      {
+                        name,
+                        multiple: true,
+                        required,
+                      },
                       value.enum.map((optionValue) =>
-                        createElement("option", {
-                          value: String(optionValue),
-                          textContent: String(optionValue),
-                          defaultSelected: defaultValue === optionValue,
-                        }),
+                        createElement(
+                          "option",
+                          {
+                            value: String(optionValue),
+                            selected: defaultValue === optionValue,
+                          },
+                          [String(optionValue)],
+                        ),
                       ),
                     ),
                   ]),
@@ -49,7 +58,7 @@ export function convertSchemaToFormElements(
                 // input[type=checkbox]
                 fragment.appendChild(
                   createElement("fieldset", {}, [
-                    createElement("legend", { textContent: key }),
+                    createElement("legend", {}, [key]),
                     ...value.enum.map((optionValue) =>
                       createElement("label", {}, [
                         createElement("input", {
@@ -57,11 +66,10 @@ export function convertSchemaToFormElements(
                           name,
                           value: String(optionValue),
                           required,
-                          defaultChecked: defaultValue === optionValue,
+                          checked: defaultValue === optionValue,
+                          placeholder: description,
                         }),
-                        createElement("span", {
-                          textContent: String(optionValue),
-                        }),
+                        createElement("span", {}, [String(optionValue)]),
                       ]),
                     ),
                   ]),
@@ -72,16 +80,19 @@ export function convertSchemaToFormElements(
               if (uiWidget === "select") {
                 fragment.appendChild(
                   createElement("label", {}, [
-                    createElement("span", { textContent: key }),
+                    createElement("span", {}, [key]),
                     createElement(
                       "select",
                       { name, required },
                       value.enum.map((optionValue) =>
-                        createElement("option", {
-                          value: String(optionValue),
-                          textContent: String(optionValue),
-                          defaultSelected: defaultValue === optionValue,
-                        }),
+                        createElement(
+                          "option",
+                          {
+                            value: String(optionValue),
+                            selected: defaultValue === optionValue,
+                          },
+                          [String(optionValue)],
+                        ),
                       ),
                     ),
                   ]),
@@ -90,7 +101,7 @@ export function convertSchemaToFormElements(
                 // input[type=radio]
                 fragment.appendChild(
                   createElement("fieldset", {}, [
-                    createElement("legend", { textContent: key }),
+                    createElement("legend", {}, [key]),
                     ...value.enum.map((optionValue) =>
                       createElement("label", {}, [
                         createElement("input", {
@@ -98,11 +109,10 @@ export function convertSchemaToFormElements(
                           name,
                           value: String(optionValue),
                           required,
-                          defaultChecked: defaultValue === optionValue,
+                          checked: defaultValue === optionValue,
+                          placeholder: description,
                         }),
-                        createElement("span", {
-                          textContent: String(optionValue),
-                        }),
+                        createElement("span", {}, [String(optionValue)]),
                       ]),
                     ),
                   ]),
@@ -110,33 +120,57 @@ export function convertSchemaToFormElements(
               }
             }
           } else if (value.format === "uri") {
+            // input[type=url]
             fragment.appendChild(
               createElement("label", {}, [
-                createElement("span", { textContent: key }),
+                createElement("span", {}, [key]),
                 createElement("input", {
                   name,
                   type: "url",
                   required,
-                  defaultValue: String(defaultValue),
+                  value: defaultValueString,
+                  minlength: value.minLength,
+                  maxlength: value.maxLength,
+                  placeholder: description,
                 }),
               ]),
             );
           } else if (uiWidget === "textarea") {
+            // textarea
             fragment.appendChild(
               createElement("label", {}, [
-                createElement("span", { textContent: key }),
-                createElement("textarea", { name, required }),
+                createElement("span", {}, [key]),
+                createElement(
+                  "textarea",
+                  {
+                    name,
+                    required,
+                    minlength: value.minLength,
+                    maxlength: value.maxLength,
+                    placeholder: description,
+                  },
+                  [defaultValueString],
+                ),
               ]),
             );
           } else {
+            // input[type=text]
             fragment.appendChild(
               createElement("label", {}, [
-                createElement("span", { textContent: key }),
-                createElement("input", {
-                  name,
-                  type: "text",
-                  required,
-                }),
+                createElement("span", {}, [key]),
+                createElement(
+                  "input",
+                  {
+                    name,
+                    type: "text",
+                    required,
+                    value: defaultValueString,
+                    minlength: value.minLength,
+                    maxlength: value.maxLength,
+                    placeholder: description,
+                  },
+
+                ),
               ]),
             );
           }
@@ -146,12 +180,15 @@ export function convertSchemaToFormElements(
         {
           fragment.appendChild(
             createElement("label", {}, [
-              createElement("span", { textContent: key }),
+              createElement("span", {}, [key]),
               createElement("input", {
                 name,
                 type: uiWidget === "range" ? "range" : "number",
+                required,
+                value: defaultValueString,
                 min: String(value.minimum),
                 max: String(value.maximum),
+                step: value.multipleOf ? String(value.multipleOf) : "any",
               }),
             ]),
           );
@@ -161,10 +198,13 @@ export function convertSchemaToFormElements(
         {
           fragment.appendChild(
             createElement("label", {}, [
-              createElement("span", { textContent: key }),
+              createElement("span", {}, [key]),
               createElement("input", {
                 name,
                 type: "checkbox",
+                required,
+                checked: defaultValue as boolean | undefined,
+                placeholder: description,
               }),
             ]),
           );
@@ -174,7 +214,7 @@ export function convertSchemaToFormElements(
         {
           fragment.appendChild(
             createElement("fieldset", {}, [
-              createElement("legend", { textContent: key }),
+              createElement("legend", {}, [key]),
               ...convertSchemaToFormElements(value, name),
             ]),
           );
