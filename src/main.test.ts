@@ -5,7 +5,7 @@ import { z } from "zod";
 import { Window, HTMLFormElement } from "happy-dom";
 import { convertSchemaToFormElements } from "./main.ts";
 import { createElement } from "./window.ts";
-import { unflatten } from "flat";
+import { normalizeFormData } from "./payload.ts";
 
 test("test", async () => {
   const S = z.object({
@@ -46,8 +46,8 @@ test("test", async () => {
   const { document, FormData } = new Window();
   document.body.appendChild(form);
 
-  const fd = new FormData(form);
-  const obj = unflatten(Object.fromEntries(fd.entries()));
+  const fd = new FormData(form) as unknown as globalThis.FormData;
+  const obj = normalizeFormData(fd);
 
   console.log(JSON.stringify(obj, null, 2));
   assert.deepStrictEqual(obj, {

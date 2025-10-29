@@ -18,7 +18,7 @@ export function convertSchemaToFormElements(
         `Unsupported schema type for field "${key}", missing type`,
       );
 
-    const { uiWidget, uiMultiple, default: defaultValue, description } = value;
+    const { uiWidget, default: defaultValue, description } = value;
     const defaultValueString =
       defaultValue == undefined ? undefined : String(defaultValue);
     const required = requiredKeys.has(key);
@@ -28,96 +28,47 @@ export function convertSchemaToFormElements(
       case "string":
         {
           if (value.enum) {
-            if (uiMultiple) {
-              // select[multiple]
-              if (uiWidget === "select") {
-                fragment.appendChild(
-                  createElement("label", {}, [
-                    createElement("span", {}, [key]),
-                    createElement(
-                      "select",
-                      {
-                        name,
-                        multiple: true,
-                        required,
-                      },
-                      value.enum.map((optionValue) =>
-                        createElement(
-                          "option",
-                          {
-                            value: String(optionValue),
-                            selected: defaultValue === optionValue,
-                          },
-                          [String(optionValue)],
-                        ),
+            // select
+            if (uiWidget === "select") {
+              fragment.appendChild(
+                createElement("label", {}, [
+                  createElement("span", {}, [key]),
+                  createElement(
+                    "select",
+                    { name, required },
+                    value.enum.map((optionValue) =>
+                      createElement(
+                        "option",
+                        {
+                          value: String(optionValue),
+                          selected: defaultValue === optionValue,
+                        },
+                        [String(optionValue)],
                       ),
                     ),
-                  ]),
-                );
-              } else {
-                // input[type=checkbox]
-                fragment.appendChild(
-                  createElement("fieldset", {}, [
-                    createElement("legend", {}, [key]),
-                    ...value.enum.map((optionValue) =>
-                      createElement("label", {}, [
-                        createElement("input", {
-                          type: "checkbox",
-                          name,
-                          value: String(optionValue),
-                          required,
-                          checked: defaultValue === optionValue,
-                          placeholder: description,
-                        }),
-                        createElement("span", {}, [String(optionValue)]),
-                      ]),
-                    ),
-                  ]),
-                );
-              }
+                  ),
+                ]),
+              );
             } else {
-              // select
-              if (uiWidget === "select") {
-                fragment.appendChild(
-                  createElement("label", {}, [
-                    createElement("span", {}, [key]),
-                    createElement(
-                      "select",
-                      { name, required },
-                      value.enum.map((optionValue) =>
-                        createElement(
-                          "option",
-                          {
-                            value: String(optionValue),
-                            selected: defaultValue === optionValue,
-                          },
-                          [String(optionValue)],
-                        ),
-                      ),
-                    ),
-                  ]),
-                );
-              } else {
-                // input[type=radio]
-                fragment.appendChild(
-                  createElement("fieldset", {}, [
-                    createElement("legend", {}, [key]),
-                    ...value.enum.map((optionValue) =>
-                      createElement("label", {}, [
-                        createElement("input", {
-                          type: "radio",
-                          name,
-                          value: String(optionValue),
-                          required,
-                          checked: defaultValue === optionValue,
-                          placeholder: description,
-                        }),
-                        createElement("span", {}, [String(optionValue)]),
-                      ]),
-                    ),
-                  ]),
-                );
-              }
+              // input[type=radio]
+              fragment.appendChild(
+                createElement("fieldset", {}, [
+                  createElement("legend", {}, [key]),
+                  ...value.enum.map((optionValue) =>
+                    createElement("label", {}, [
+                      createElement("input", {
+                        type: "radio",
+                        name,
+                        value: String(optionValue),
+                        required,
+                        checked: defaultValue === optionValue,
+                        placeholder: description,
+                      }),
+                      createElement("span", {}, [String(optionValue)]),
+                    ]),
+                  ),
+                ]),
+              );
             }
           } else if (value.format === "uri") {
             // input[type=url]
@@ -158,25 +109,23 @@ export function convertSchemaToFormElements(
             fragment.appendChild(
               createElement("label", {}, [
                 createElement("span", {}, [key]),
-                createElement(
-                  "input",
-                  {
-                    name,
-                    type: "text",
-                    required,
-                    value: defaultValueString,
-                    minlength: value.minLength,
-                    maxlength: value.maxLength,
-                    placeholder: description,
-                  },
-
-                ),
+                createElement("input", {
+                  name,
+                  type: "text",
+                  required,
+                  value: defaultValueString,
+                  minlength: value.minLength,
+                  maxlength: value.maxLength,
+                  pattern: value.pattern,
+                  placeholder: description,
+                }),
               ]),
             );
           }
         }
         break;
       case "number":
+      case "integer":
         {
           fragment.appendChild(
             createElement("label", {}, [
@@ -188,7 +137,7 @@ export function convertSchemaToFormElements(
                 value: defaultValueString,
                 min: String(value.minimum),
                 max: String(value.maximum),
-                step: value.multipleOf ? String(value.multipleOf) : "any",
+                step: value.type === "integer" ? "1" : "any",
               }),
             ]),
           );
@@ -210,10 +159,78 @@ export function convertSchemaToFormElements(
           );
         }
         break;
+      case "array":
+        {
+          if (typeof value.items !== "object" || Array.isArray(value.items)) {
+            throw new Error(
+              `Unsupported schema type for field "${name}", array items schema is invalid`,
+            );
+          }
+          if (["object", "array"].includes(value.items.type!)) {
+            throw new Error(
+              `Unsupported schema type for field "${name}", array of ${value.items.type} is not supported`,
+            );
+          }
+
+          const enumItems = value.items.enum;
+          if (!enumItems) {
+            throw new Error(
+              `Unsupported schema type for field "${name}", array items must have enum`,
+            );
+          }
+
+          // select[multiple]
+          if (uiWidget === "select") {
+            fragment.appendChild(
+              createElement("label", {}, [
+                createElement("span", {}, [key]),
+                createElement(
+                  "select",
+                  {
+                    name,
+                    multiple: true,
+                    required,
+                  },
+                  enumItems.map((optionValue) =>
+                    createElement(
+                      "option",
+                      {
+                        value: String(optionValue),
+                        selected: defaultValue === optionValue,
+                      },
+                      [String(optionValue)],
+                    ),
+                  ),
+                ),
+              ]),
+            );
+          } else {
+            // input[type=checkbox]
+            fragment.appendChild(
+              createElement("fieldset", {}, [
+                createElement("legend", {}, [key]),
+                ...enumItems.map((optionValue) =>
+                  createElement("label", {}, [
+                    createElement("input", {
+                      type: "checkbox",
+                      name,
+                      value: String(optionValue),
+                      required,
+                      checked: defaultValue === optionValue,
+                      placeholder: description,
+                    }),
+                    createElement("span", {}, [String(optionValue)]),
+                  ]),
+                ),
+              ]),
+            );
+          }
+        }
+        break;
       case "object":
         {
           fragment.appendChild(
-            createElement("fieldset", {}, [
+            createElement("fieldset", { name }, [
               createElement("legend", {}, [key]),
               ...convertSchemaToFormElements(value, name),
             ]),

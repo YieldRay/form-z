@@ -29,7 +29,8 @@ export type HTMLElementAttributes =
   | "tabindex"
   | "title"
   | "translate"
-  | "writingsuggestions";
+  | "writingsuggestions"
+  | `data-${string}`;
 
 export type HTMLAnchorElementAttributes =
   | HTMLElementAttributes

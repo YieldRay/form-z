@@ -3,10 +3,10 @@ import { z } from "zod";
 import { HTMLFormElement } from "happy-dom";
 import { convertSchemaToFormElements } from "./main.ts";
 import { createElement } from "./window.ts";
-import { unflatten } from "flat";
+import { normalizeFormData } from "./payload.ts";
 
 const S = z.object({
-  url: z.url().default("https://example.net"),
+  url: z.url().default("https://example.net").describe("URI"),
   method: z.enum(["GET", "POST"]).default("GET").meta({
     uiWidget: "select", // or "radio"
   }),
@@ -14,24 +14,20 @@ const S = z.object({
     uiWidget: "radio",
   }),
   user: z.object({
-    name: z.string(),
-    age: z.number().min(0).max(120).default(0).meta({
+    name: z.string().describe('First-name Last-name'),
+    age: z.int().min(0).max(120).default(0).meta({
       uiWidget: "range", // or "number"
     }),
     age2: z.number().min(0).max(120).default(0).meta({
       uiWidget: "number",
     }),
     favoriteColor: z
-      .enum(["red", "green", "blue"])
+      .array(z.enum(["red", "green", "blue"]))
       .meta({
-        uiWidget: "checkbox", // or "select"
-        uiMultiple: true,
+        uiWidget: "select", // or "checkbox"
       })
       .optional(),
-    favoriteColor2: z.enum(["red", "green", "blue"]).meta({
-      uiWidget: "select",
-      uiMultiple: true,
-    }),
+    favoriteColor2: z.array(z.enum(["red", "green", "blue"])).optional(),
   }),
   bio: z
     .string()
@@ -41,7 +37,7 @@ const S = z.object({
     .optional(),
 });
 
-console.log(z.toJSONSchema(S));
+console.log(JSON.stringify(z.toJSONSchema(S), null, 2));
 
 const form = createElement(
   "form",
@@ -61,7 +57,7 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === "/form") {
       const fd = await request.formData();
-      const obj = unflatten(Object.fromEntries(fd.entries()));
+      const input = normalizeFormData(fd);
       // const result = S.safeParse(obj);
       // return Response.json(result);
 
@@ -70,11 +66,17 @@ export default {
         strictSchema: false,
       }).compile(z.toJSONSchema(S, { target: "openapi-3.0" }));
 
-      const valid = validate(obj);
+      const output = structuredClone(input);
+      const valid = validate(output);
       if (valid) {
-        return Response.json({ success: true, data: obj });
+        return Response.json({ success: true, validate, input, output });
       } else {
-        return Response.json({ success: false, errors: validate.errors });
+        return Response.json({
+          success: false,
+          validate,
+          input,
+          errors: validate.errors,
+        });
       }
     } else {
       const html = `<!DOCTYPE html>
@@ -85,7 +87,9 @@ export default {
   <title>Form</title>
   <style>
   form, form fieldset { display: flex; flex-direction: column; gap: 1em; max-width: 400px; }
+  fieldset:not([name]) { flex-direction: row ; flex-wrap: wrap; }
   label:has(span) { display: flex; gap: 4px }
+  input:not([type=radio], [type=checkbox]), select, textarea { flex: 1; }
   </style>
 </head>
 <body>
