@@ -17,7 +17,5 @@ export function normalizeFormData(formData: FormData) {
     }
   }
 
-  console.log(record);
-
   return unflatten(record);
 }
