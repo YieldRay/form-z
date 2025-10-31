@@ -3,7 +3,7 @@ import * as assert from "node:assert";
 
 import { z } from "zod";
 import { Window, HTMLFormElement } from "happy-dom";
-import { convertSchemaToFormElements } from "./main.ts";
+import { convertSchemaToString } from "./main.tsx";
 import { createElement } from "./window.ts";
 import { normalizeFormData } from "./payload.ts";
 
@@ -31,14 +31,13 @@ test("test", async () => {
     }),
   });
 
-  const form = createElement(
-    "form",
-    {
-      method: "POST",
-      target: "https://node.deno.dev",
-    },
-    convertSchemaToFormElements(z.toJSONSchema(S)),
-  ) as unknown as HTMLFormElement;
+  const form = createElement("form", {
+    method: "POST",
+    target: "https://node.deno.dev",
+  }) as unknown as HTMLFormElement;
+
+  const innerHTML = convertSchemaToString(z.toJSONSchema(S));
+  form.innerHTML = innerHTML;
 
   console.log(form.outerHTML);
   assert.ok(typeof form.outerHTML === "string");

@@ -1,7 +1,7 @@
 import { Ajv } from "ajv";
 import { z } from "zod";
 import { HTMLFormElement } from "happy-dom";
-import { convertSchemaToFormElements } from "./main.ts";
+import { convertSchemaToString } from "./main.tsx";
 import { createElement } from "./window.ts";
 import { normalizeFormData } from "./payload.ts";
 
@@ -14,7 +14,7 @@ const S = z.object({
     uiWidget: "radio",
   }),
   user: z.object({
-    name: z.string().describe('First-name Last-name'),
+    name: z.string().describe("First-name Last-name"),
     age: z.int().min(0).max(120).default(0).meta({
       uiWidget: "range", // or "number"
     }),
@@ -39,18 +39,14 @@ const S = z.object({
 
 console.log(JSON.stringify(z.toJSONSchema(S), null, 2));
 
-const form = createElement(
-  "form",
-  {
-    method: "POST",
-    action: "/form",
-    enctype: "multipart/form-data",
-  },
-  [
-    ...convertSchemaToFormElements(z.toJSONSchema(S)),
-    createElement("button", { type: "submit" }, ["Submit"]),
-  ],
-) as unknown as HTMLFormElement;
+const form = createElement("form", {
+  method: "POST",
+  action: "/form",
+  enctype: "multipart/form-data",
+}) as unknown as HTMLFormElement;
+
+form.innerHTML = convertSchemaToString(z.toJSONSchema(S));
+form.append(createElement("button", { type: "submit" }, ["Submit"]) as any);
 
 export default {
   fetch: async (request: Request) => {
