@@ -1,4 +1,8 @@
+/**
+ * We use hono/jsx, so all HTML attributes are in html standard (e.g., "class" instead of "className")
+ */
 import type { z } from "zod";
+// import { createElement } from "hono/jsx";
 
 export function convertSchemaToString(
   schema: z.core.JSONSchema.BaseSchema
@@ -6,9 +10,15 @@ export function convertSchemaToString(
   return convertSchemaToJSXElement(schema).toString();
 }
 
+/**
+ * Supported schema metadata fields:
+ * - uiWidget: string - to specify the preferred UI widget type, e.g., "textarea", "select", "range", etc.
+ * - uiName: string - to specify the display name of the field, otherwise the key name will be used.
+ */
 export function convertSchemaToJSXElement(
   schema: z.core.JSONSchema.BaseSchema,
-  parent?: string
+  parent?: string,
+  idPrefix = ""
 ) {
   if (schema.type !== "object") {
     throw new Error("Root schema must be of type object");
@@ -30,6 +40,7 @@ export function convertSchemaToJSXElement(
         const defaultValueString =
           defaultValue == undefined ? undefined : String(defaultValue);
         const required = requiredKeys.has(key);
+        const displayName = value.uiName || key;
         const name = parent ? `${parent}.${key}` : key;
 
         if (value.type === "string") {
@@ -37,9 +48,11 @@ export function convertSchemaToJSXElement(
             // string with enum
             if (uiWidget === "select") {
               return (
-                <label key={name}>
-                  <span>{key}</span>
-                  <select name={name} required={required}>
+                <div key={name}>
+                  <label for={idPrefix + name} title={description}>
+                    {displayName}
+                  </label>
+                  <select id={idPrefix + name} name={name} required={required}>
                     {value.enum.map((optionValue) => (
                       <option
                         key={optionValue}
@@ -50,63 +63,83 @@ export function convertSchemaToJSXElement(
                       </option>
                     ))}
                   </select>
-                </label>
+                </div>
               );
             } else {
               return (
-                <fieldset key={name}>
-                  <legend>{key}</legend>
-                  {value.enum.map((optionValue) => (
-                    <label key={String(optionValue)}>
-                      <input
-                        type="radio"
-                        name={name}
-                        value={String(optionValue)}
-                        required={required}
-                        checked={defaultValue === optionValue}
-                        placeholder={description}
-                      />
-                      <span>{String(optionValue)}</span>
-                    </label>
-                  ))}
-                </fieldset>
+                <div key={name}>
+                  <span title={value.description}>{displayName}</span>
+                  <span>
+                    {value.enum.map((optionValue) => (
+                      <label key={String(optionValue)}>
+                        <input
+                          type="radio"
+                          name={name}
+                          value={String(optionValue)}
+                          required={required}
+                          checked={defaultValue === optionValue}
+                        />
+                        <span>{String(optionValue)}</span>
+                      </label>
+                    ))}
+                  </span>
+                </div>
               );
             }
-          } else if (value.format === "uri") {
+          } else if (
+            value.format === "uri" ||
+            value.format === "email" ||
+            value.format === "date-time-local" ||
+            value.format === "time-local"
+          ) {
+            const type = {
+              uri: "url",
+              email: "email",
+              "date-time-local": "datetime-local",
+              "time-local": "time",
+            }[value.format];
+
             return (
-              <label key={name}>
-                <span>{key}</span>
+              <div key={name}>
+                <label for={idPrefix + name} title={value.description}>
+                  {displayName}
+                </label>
                 <input
+                  id={idPrefix + name}
                   name={name}
-                  type="url"
+                  type={type}
                   required={required}
                   value={defaultValueString}
                   minlength={value.minLength}
                   maxlength={value.maxLength}
-                  placeholder={description}
                 />
-              </label>
+              </div>
             );
           } else if (uiWidget === "textarea") {
             return (
-              <label key={name}>
-                <span>{key}</span>
+              <div key={name}>
+                <label for={idPrefix + name} title={description}>
+                  {displayName}
+                </label>
                 <textarea
+                  id={idPrefix + name}
                   name={name}
                   required={required}
                   minlength={value.minLength}
                   maxlength={value.maxLength}
-                  placeholder={description}
                 >
                   {defaultValueString}
                 </textarea>
-              </label>
+              </div>
             );
           } else {
             return (
-              <label key={name}>
-                <span>{key}</span>
+              <div key={name}>
+                <label for={idPrefix + name} title={description}>
+                  {displayName}
+                </label>
                 <input
+                  id={idPrefix + name}
                   name={name}
                   type="text"
                   required={required}
@@ -114,53 +147,48 @@ export function convertSchemaToJSXElement(
                   minlength={value.minLength}
                   maxlength={value.maxLength}
                   pattern={value.pattern}
-                  placeholder={description}
+                  title={value.pattern}
                 />
-              </label>
+              </div>
             );
           }
-        } else if (value.type === "number") {
+        } else if (value.type === "number" || value.type === "integer") {
+          const step = {
+            number: "any",
+            integer: "1",
+          }[value.type];
+
           return (
-            <label key={name}>
-              <span>{key}</span>
+            <div key={name}>
+              <label for={idPrefix + name} title={description}>
+                {displayName}
+              </label>
               <input
+                id={idPrefix + name}
                 name={name}
                 type={uiWidget === "range" ? "range" : "number"}
                 required={required}
                 value={defaultValueString}
                 min={value.minimum}
                 max={value.maximum}
-                step="any"
+                step={step}
               />
-            </label>
-          );
-        } else if (value.type === "integer") {
-          return (
-            <label key={name}>
-              <span>{key}</span>
-              <input
-                name={name}
-                type={uiWidget === "range" ? "range" : "number"}
-                required={required}
-                value={defaultValueString}
-                min={value.minimum}
-                max={value.maximum}
-                step="1"
-              />
-            </label>
+            </div>
           );
         } else if (value.type === "boolean") {
           return (
-            <label key={name}>
-              <span>{key}</span>
+            <div key={name}>
+              <label for={idPrefix + name} title={description}>
+                {displayName}
+              </label>
               <input
+                id={idPrefix + name}
                 name={name}
                 type="checkbox"
                 required={required}
                 checked={defaultValue as boolean | undefined}
-                placeholder={description}
               />
-            </label>
+            </div>
           );
         } else if (value.type === "array") {
           if (typeof value.items !== "object" || Array.isArray(value.items)) {
@@ -183,9 +211,16 @@ export function convertSchemaToJSXElement(
 
           if (uiWidget === "select") {
             return (
-              <label key={name}>
-                <span>{key}</span>
-                <select name={name} multiple required={required}>
+              <div key={name}>
+                <label for={idPrefix + name} title={description}>
+                  {displayName}
+                </label>
+                <select
+                  id={idPrefix + name}
+                  name={name}
+                  multiple
+                  required={required}
+                >
                   {enumItems.map((optionValue) => (
                     <option
                       key={optionValue}
@@ -196,33 +231,34 @@ export function convertSchemaToJSXElement(
                     </option>
                   ))}
                 </select>
-              </label>
+              </div>
             );
           } else {
             return (
-              <fieldset key={name}>
-                <legend>{key}</legend>
-                {enumItems.map((optionValue) => (
-                  <label key={optionValue}>
-                    <input
-                      type="checkbox"
-                      name={name}
-                      value={String(optionValue)}
-                      required={required}
-                      checked={defaultValue === optionValue}
-                      placeholder={description}
-                    />
-                    <span>{String(optionValue)}</span>
-                  </label>
-                ))}
-              </fieldset>
+              <div key={name}>
+                <span title={description}>{displayName}</span>
+                <span>
+                  {enumItems.map((optionValue) => (
+                    <label key={optionValue}>
+                      <input
+                        type="checkbox"
+                        name={name}
+                        value={String(optionValue)}
+                        required={required}
+                        checked={defaultValue === optionValue}
+                      />
+                      <span>{String(optionValue)}</span>
+                    </label>
+                  ))}
+                </span>
+              </div>
             );
           }
         } else if (value.type === "object") {
           return (
             <fieldset key={name} name={name}>
-              <legend>{key}</legend>
-              {convertSchemaToJSXElement(value, name)}
+              <legend title={description}>{displayName}</legend>
+              <div>{convertSchemaToJSXElement(value, name)}</div>
             </fieldset>
           );
         } else {

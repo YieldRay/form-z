@@ -1,9 +1,9 @@
-import { Ajv } from "ajv";
 import { z } from "zod";
 import { HTMLFormElement } from "happy-dom";
-import { convertSchemaToString } from "./main.tsx";
-import { createElement } from "./window.ts";
+import { convertSchemaToString } from "./render.tsx";
+import { createElement } from "./test-utils.ts";
 import { normalizeFormData } from "./payload.ts";
+import { validateFormData } from "./validate.ts";
 
 const S = z.object({
   url: z.url().default("https://example.net").describe("URI"),
@@ -21,12 +21,10 @@ const S = z.object({
     age2: z.number().min(0).max(120).default(0).meta({
       uiWidget: "number",
     }),
-    favoriteColor: z
-      .array(z.enum(["red", "green", "blue"]))
-      .meta({
-        uiWidget: "select", // or "checkbox"
-      })
-      .optional(),
+    avatar: z.file().optional(),
+    favoriteColor: z.array(z.enum(["red", "green", "blue"])).meta({
+      uiWidget: "select", // or "checkbox"
+    }),
     favoriteColor2: z.array(z.enum(["red", "green", "blue"])).optional(),
   }),
   bio: z
@@ -46,7 +44,11 @@ const form = createElement("form", {
 }) as unknown as HTMLFormElement;
 
 form.innerHTML = convertSchemaToString(z.toJSONSchema(S));
-form.append(createElement("button", { type: "submit" }, ["Submit"]) as any);
+form.append(
+  createElement("button", { type: "submit", style: "width: 100%" }, [
+    "Submit",
+  ]) as any
+);
 
 export default {
   fetch: async (request: Request) => {
@@ -54,26 +56,10 @@ export default {
     if (url.pathname === "/form") {
       const fd = await request.formData();
       const input = normalizeFormData(fd);
-      // const result = S.safeParse(obj);
-      // return Response.json(result);
-
-      const validate = new Ajv({
-        coerceTypes: true,
-        strictSchema: false,
-      }).compile(z.toJSONSchema(S, { target: "openapi-3.0" }));
-
-      const output = structuredClone(input);
-      const valid = validate(output);
-      if (valid) {
-        return Response.json({ success: true, validate, input, output });
-      } else {
-        return Response.json({
-          success: false,
-          validate,
-          input,
-          errors: validate.errors,
-        });
-      }
+      return Response.json({
+        input,
+        ...validateFormData(S, fd),
+      });
     } else {
       const html = `<!DOCTYPE html>
 <html lang="en">
@@ -82,19 +68,32 @@ export default {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Form</title>
   <style>
-  form, form fieldset { display: flex; flex-direction: column; gap: 1em; max-width: 400px; }
-  fieldset:not([name]) { flex-direction: row ; flex-wrap: wrap; }
-  label:has(span) { display: flex; gap: 4px }
-  input:not([type=radio], [type=checkbox]), select, textarea { flex: 1; }
+  @import '//unpkg.com/landsoul';
+  form {
+    max-width: 400px;
+  }
+  :where(form, form fieldset > *) {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  :where(form > *, form fieldset > * > *) {
+    display: flex;
+    gap: 8px;
+    & > :first-child:not(legend) {
+      min-width: 120px;
+    }
+    & > :last-child {
+      flex: 1;
+    }
+  }
   </style>
 </head>
 <body>
   ${form.outerHTML}
 </body>
 </html>`;
-      return new Response(html, {
-        headers: { "Content-Type": "text/html" },
-      });
+      return new Response(html, { headers: { "Content-Type": "text/html" } });
     }
   },
 };
