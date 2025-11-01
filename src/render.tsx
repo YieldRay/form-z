@@ -1,11 +1,20 @@
 /**
- * We use hono/jsx, so all HTML attributes are in html standard (e.g., "class" instead of "className")
+ * Render helpers for converting JSON Schema to JSX (Hono) form elements.
+ *
+ * We use hono/jsx, so all HTML attributes follow HTML standards
+ * (e.g., use "class" instead of React's "className").
  */
 import type { PropsWithChildren } from "hono/jsx";
 import type { JSX } from "hono/jsx/jsx-runtime";
 import type { z } from "zod";
 // import { createElement } from "hono/jsx";
 
+/**
+ * Minimal object schema shape accepted by this renderer.
+ *
+ * Only `type: "object"` schemas at the root are supported; nested properties
+ * follow JSON Schema conventions as produced by `z.toJSONSchema`.
+ */
 export interface ObjectSchema {
   type: "object";
   properties?: Record<string, any>;
@@ -16,12 +25,25 @@ export interface ObjectSchema {
 // as z.toJSONSchema returns BaseSchema
 type StrictObjectSchema = z.core.JSONSchema.BaseSchema;
 
+/**
+ * Convert a JSON Schema object to a JSX string of form elements (no wrapping <form/>).
+ *
+ * @param schema Root JSON Schema object (must be `{ type: "object" }`).
+ * @returns Stringified JSX markup produced by Hono's JSX runtime.
+ */
 export function convertSchemaToString(schema: ObjectSchema): string {
   return RenderSchemaToHonoElements({
     schema,
   }).toString();
 }
 
+/**
+ * Convert a JSON Schema to a complete `<form>` string with rendered fields.
+ *
+ * @param schema Root JSON Schema object (must be `{ type: "object" }`).
+ * @param props Additional `<form>` attributes (e.g., method, action, enctype).
+ * @returns Stringified `<form>` markup.
+ */
 export function convertSchemaToFormString(
   schema: ObjectSchema,
   props?: JSX.IntrinsicElements["form"]
@@ -32,6 +54,12 @@ export function convertSchemaToFormString(
   }).toString();
 }
 
+/**
+ * JSX component that renders a `<form>` and the fields derived from a JSON Schema.
+ *
+ * @example
+ *   <RenderSchemaToHonoForm schema={schema} method="post" action="/submit" />
+ */
 export function RenderSchemaToHonoForm({
   schema,
   children,
@@ -50,9 +78,21 @@ export function RenderSchemaToHonoForm({
 }
 
 /**
- * Supported schema metadata fields:
- * - uiWidget: string - to specify the preferred UI widget type, e.g., "textarea", "select", "range", etc.
- * - uiName: string - to specify the display name of the field, otherwise the key name will be used.
+ * JSX fragment that renders form controls (<input>, <select>, etc.) from a JSON Schema.
+ *
+ * Supported schema metadata (via `meta`/description on JSON Schema values):
+ * - `uiWidget: string` – preferred UI widget type, e.g., "textarea", "select", "range".
+ * - `uiName: string` – display label for a field; defaults to the object key.
+ *
+ * Constraints and behaviors:
+ * - Root schema must be `{ type: "object", properties }`.
+ * - Arrays must specify `items.enum` (arrays of object/array are not supported).
+ * - `format` supports: `uri`, `email`, `date-time-local`, `time-local`.
+ * - For Hono JSX, attribute names are native HTML (e.g., `for`, `class`).
+ *
+ * @param _schema JSON Schema to render.
+ * @param parent Internal path prefix for nested fields.
+ * @param getID Optional function to map a field path to an element id.
  */
 export function RenderSchemaToHonoElements({
   schema: _schema,

@@ -1,3 +1,8 @@
+/**
+ * Adopted from https://github.com/wooorm/html-element-attributes
+ * MIT LICENSE
+ */
+
 export type HTMLElementAttributes =
   | "accesskey"
   | "autocapitalize"

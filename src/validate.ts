@@ -1,6 +1,8 @@
 /**
- * We do not bundle this module, because we do not want to depend on (or bundle) Ajv. (it's large!)
- * To use this util we can just do copy-paste.
+ * JSON Schema validation helpers (Ajv 2020).
+ *
+ * We do not bundle this module to avoid shipping Ajv by default. If needed,
+ * you can copy-paste this file into your project and install Ajv separately.
  */
 import { Ajv2020 as Ajv } from "ajv/dist/2020.js"; // https://github.com/ajv-validator/ajv/issues/2335
 

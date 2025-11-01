@@ -4,15 +4,21 @@
   "type": "module",
   "description": "",
   "main": "dist/index.js",
-  "types": "dist/index.d.js",
+  "types": "dist/index.d.ts",
   "files": [
     "src",
-    "dist"
+    "dist",
+    "!*.test.*"
   ],
   "scripts": {
     "build": "tsdown"
   },
-  "keywords": [],
+  "keywords": [
+    "json",
+    "schema",
+    "form",
+    "hono"
+  ],
   "author": "YieldRay",
   "license": "MIT",
   "devDependencies": {

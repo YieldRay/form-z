@@ -3,8 +3,8 @@ import * as assert from "node:assert";
 
 import { z } from "zod";
 import { Window, HTMLFormElement } from "happy-dom";
+import { createDocumentFragment, createElement } from "./utils.test.ts";
 import { convertSchemaToFormString, type ObjectSchema } from "./render.tsx";
-import { createDocumentFragment, createElement } from "./test-utils.ts";
 import { normalizeFormData } from "./payload.ts";
 
 test("test", async () => {
