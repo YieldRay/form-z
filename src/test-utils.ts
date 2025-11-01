@@ -4,15 +4,19 @@ import type { HTMLElementTagNameMapToAttributes } from "./attrs.ts";
 export const window = (globalThis.window ??
   new Window()) as unknown as globalThis.Window;
 
+export function createDocumentFragment() {
+  return window.document.createDocumentFragment();
+}
+
 export function createElement<
   K extends keyof HTMLElementTagNameMap &
-    keyof HTMLElementTagNameMapToAttributes,
+    keyof HTMLElementTagNameMapToAttributes
 >(
   tagName: K,
   props?: Partial<
     Record<HTMLElementTagNameMapToAttributes[K], string | number | boolean>
   >,
-  children?: Iterable<Node | string | null | undefined | false>,
+  children?: Iterable<Node | string | null | undefined | false>
 ): HTMLElementTagNameMap[K] {
   const element = window.document.createElement(tagName);
 

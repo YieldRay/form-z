@@ -1,13 +1,52 @@
 /**
  * We use hono/jsx, so all HTML attributes are in html standard (e.g., "class" instead of "className")
  */
+import type { PropsWithChildren } from "hono/jsx";
+import type { JSX } from "hono/jsx/jsx-runtime";
 import type { z } from "zod";
 // import { createElement } from "hono/jsx";
 
-export function convertSchemaToString(
-  schema: z.core.JSONSchema.BaseSchema
+export interface ObjectSchema {
+  type: "object";
+  properties?: Record<string, any>;
+  [key: string]: any;
+}
+
+// we use BaseSchema instead of ObjectSchema
+// as z.toJSONSchema returns BaseSchema
+type StrictObjectSchema = z.core.JSONSchema.BaseSchema;
+
+export function convertSchemaToString(schema: ObjectSchema): string {
+  return RenderSchemaToHonoElements({
+    schema,
+  }).toString();
+}
+
+export function convertSchemaToFormString(
+  schema: ObjectSchema,
+  props?: JSX.IntrinsicElements["form"]
 ): string {
-  return convertSchemaToJSXElement(schema).toString();
+  return RenderSchemaToHonoForm({
+    schema,
+    ...props,
+  }).toString();
+}
+
+export function RenderSchemaToHonoForm({
+  schema,
+  children,
+  ...props
+}: PropsWithChildren<
+  JSX.IntrinsicElements["form"] & {
+    schema: ObjectSchema;
+  }
+>) {
+  return (
+    <form {...props}>
+      <RenderSchemaToHonoElements schema={schema} />
+      {children}
+    </form>
+  );
 }
 
 /**
@@ -15,11 +54,17 @@ export function convertSchemaToString(
  * - uiWidget: string - to specify the preferred UI widget type, e.g., "textarea", "select", "range", etc.
  * - uiName: string - to specify the display name of the field, otherwise the key name will be used.
  */
-export function convertSchemaToJSXElement(
-  schema: z.core.JSONSchema.BaseSchema,
-  parent?: string,
-  idPrefix = ""
-) {
+export function RenderSchemaToHonoElements({
+  schema: _schema,
+  parent,
+  getID = (path) => path,
+}: {
+  schema: ObjectSchema;
+  parent?: string;
+  getID?: (path: string) => string;
+}) {
+  const schema = _schema as StrictObjectSchema;
+
   if (schema.type !== "object") {
     throw new Error("Root schema must be of type object");
   }
@@ -49,10 +94,10 @@ export function convertSchemaToJSXElement(
             if (uiWidget === "select") {
               return (
                 <div key={name}>
-                  <label for={idPrefix + name} title={description}>
+                  <label for={getID(name)} title={description}>
                     {displayName}
                   </label>
-                  <select id={idPrefix + name} name={name} required={required}>
+                  <select id={getID(name)} name={name} required={required}>
                     {value.enum.map((optionValue) => (
                       <option
                         key={optionValue}
@@ -101,11 +146,11 @@ export function convertSchemaToJSXElement(
 
             return (
               <div key={name}>
-                <label for={idPrefix + name} title={value.description}>
+                <label for={getID(name)} title={value.description}>
                   {displayName}
                 </label>
                 <input
-                  id={idPrefix + name}
+                  id={getID(name)}
                   name={name}
                   type={type}
                   required={required}
@@ -118,11 +163,11 @@ export function convertSchemaToJSXElement(
           } else if (uiWidget === "textarea") {
             return (
               <div key={name}>
-                <label for={idPrefix + name} title={description}>
+                <label for={getID(name)} title={description}>
                   {displayName}
                 </label>
                 <textarea
-                  id={idPrefix + name}
+                  id={getID(name)}
                   name={name}
                   required={required}
                   minlength={value.minLength}
@@ -135,11 +180,11 @@ export function convertSchemaToJSXElement(
           } else {
             return (
               <div key={name}>
-                <label for={idPrefix + name} title={description}>
+                <label for={getID(name)} title={description}>
                   {displayName}
                 </label>
                 <input
-                  id={idPrefix + name}
+                  id={getID(name)}
                   name={name}
                   type="text"
                   required={required}
@@ -160,11 +205,11 @@ export function convertSchemaToJSXElement(
 
           return (
             <div key={name}>
-              <label for={idPrefix + name} title={description}>
+              <label for={getID(name)} title={description}>
                 {displayName}
               </label>
               <input
-                id={idPrefix + name}
+                id={getID(name)}
                 name={name}
                 type={uiWidget === "range" ? "range" : "number"}
                 required={required}
@@ -178,11 +223,11 @@ export function convertSchemaToJSXElement(
         } else if (value.type === "boolean") {
           return (
             <div key={name}>
-              <label for={idPrefix + name} title={description}>
+              <label for={getID(name)} title={description}>
                 {displayName}
               </label>
               <input
-                id={idPrefix + name}
+                id={getID(name)}
                 name={name}
                 type="checkbox"
                 required={required}
@@ -212,11 +257,11 @@ export function convertSchemaToJSXElement(
           if (uiWidget === "select") {
             return (
               <div key={name}>
-                <label for={idPrefix + name} title={description}>
+                <label for={getID(name)} title={description}>
                   {displayName}
                 </label>
                 <select
-                  id={idPrefix + name}
+                  id={getID(name)}
                   name={name}
                   multiple
                   required={required}
@@ -258,7 +303,13 @@ export function convertSchemaToJSXElement(
           return (
             <fieldset key={name} name={name}>
               <legend title={description}>{displayName}</legend>
-              <div>{convertSchemaToJSXElement(value, name)}</div>
+              <div>
+                <RenderSchemaToHonoElements
+                  schema={value as ObjectSchema}
+                  parent={name}
+                  getID={getID}
+                />
+              </div>
             </fieldset>
           );
         } else {

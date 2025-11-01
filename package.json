@@ -16,13 +16,13 @@
   "author": "YieldRay",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^22.18.12",
+    "@types/node": "^22.18.13",
+    "ajv": "^8.17.1",
     "flat": "^6.0.1",
-    "happy-dom": "^20.0.8",
+    "happy-dom": "^20.0.10",
     "hono": "^4.10.4",
     "tsdown": "^0.15.12",
     "typescript": "^5.9.3",
-    "zod": "^4.1.12",
-    "ajv": "^8.17.1"
+    "zod": "^4.1.12"
   }
 }

@@ -1,3 +1,3 @@
-# form-z
+# json-schema-to-form
 
-WIP: generate HTML forms from Zod schemas
+Convert JSON Schema into web form string.

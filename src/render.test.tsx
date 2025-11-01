@@ -3,8 +3,8 @@ import * as assert from "node:assert";
 
 import { z } from "zod";
 import { Window, HTMLFormElement } from "happy-dom";
-import { convertSchemaToString } from "./render.tsx";
-import { createElement } from "./test-utils.ts";
+import { convertSchemaToFormString, type ObjectSchema } from "./render.tsx";
+import { createDocumentFragment, createElement } from "./test-utils.ts";
 import { normalizeFormData } from "./payload.ts";
 
 test("test", async () => {
@@ -31,13 +31,18 @@ test("test", async () => {
     }),
   });
 
-  const form = createElement("form", {
-    method: "POST",
-    target: "https://node.deno.dev",
-  }) as unknown as HTMLFormElement;
+  const doc = createDocumentFragment();
+  let form = createElement("form") as unknown as HTMLFormElement;
+  doc.append(form as any);
 
-  const innerHTML = convertSchemaToString(z.toJSONSchema(S));
-  form.innerHTML = innerHTML;
+  form.outerHTML = convertSchemaToFormString(
+    z.toJSONSchema(S) as ObjectSchema,
+    {
+      method: "post",
+      action: "https://node.deno.dev",
+    }
+  );
+  form = doc.querySelector("form") as unknown as HTMLFormElement;
 
   console.log(form.outerHTML);
   assert.ok(typeof form.outerHTML === "string");

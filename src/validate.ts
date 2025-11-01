@@ -2,7 +2,7 @@
  * We do not bundle this module, because we do not want to depend on (or bundle) Ajv. (it's large!)
  * To use this util we can just do copy-paste.
  */
-import { Ajv } from "ajv";
+import { Ajv2020 as Ajv } from "ajv/dist/2020.js"; // https://github.com/ajv-validator/ajv/issues/2335
 
 export function validateJSON<T extends { type: "object" }>(
   schema: T,
@@ -29,5 +29,6 @@ export function validateFormData<T extends { type: "object" }>(
   formData: FormData
 ) {
   const data = normalizeFormData(formData);
+  console.log(schema);
   return validateJSON(schema, data);
 }
